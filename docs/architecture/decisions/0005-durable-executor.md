@@ -2,9 +2,9 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-15
-- **Last verified:** 2026-08-16
-- **Deciders:** MCP++ 1.0 gap-closure program (MCPP-G020); sealed plan Key Decision KD-12; 2026-08-16 operator correction of KD-12 runtime default
-- **Scope:** The durable-execution contract for MCP++ 1.0 (`DurableExecutor`); the primary production-capable adapter (DuckDB/Quack journaled executor, locally crash-recovery testable, SQLite fallback); the evaluation of Restate and Dapr as optional second adapters; the admission rule that a second adapter is adopted only when a repeatable local compose environment works without unpaid cloud; and the separation of journaled crash recovery from Event DAG validation and state-mode merge semantics.
+- **Last verified:** 2026-08-18
+- **Deciders:** MCP++ 1.0 gap-closure program (MCPP-G020); sealed plan Key Decision KD-12; 2026-08-16 operator correction of KD-12 runtime default; 2026-08-18 clarification of Quack ownership and DuckLake's non-authoritative role
+- **Scope:** The durable-execution contract for MCP++ 1.0 (`DurableExecutor`); the primary production-capable adapter (a DuckDB journal opened by one fenced, authenticated Quack owner/service, locally crash-recovery testable, with SQLite fallback); the non-authoritative DuckLake history/analytics projection; the evaluation of Restate and Dapr as optional second adapters; the admission rule that a second adapter is adopted only when a repeatable local compose environment works without unpaid cloud; and the separation of journaled crash recovery from Event DAG validation and state-mode merge semantics.
 - **Non-goals:** Full `DurableExecutor@1` method schemas and prose (MCPP-050); concrete SQLite journal package and unit tests (MCPP-051); crash-recovery integration test (MCPP-052); accelerate runtime binding (MCPP-053); reimplementing a full commercial workflow engine; state consistency modes and single-authority SQLite for `StateRef` (ADR-0004 / KD-8…KD-11); crypto suite (ADR-0002); envelope carrier shape (KD-7); A2A task lifecycle ownership (KD-13 / ADR-0006); which package owns schemas vs adapters beyond restating that DurableExecutor is defined in the spec repo (ADR-0001 / MCPP-013).
 - **Supersedes:** none
 - **Superseded-by:** none
@@ -122,26 +122,31 @@ Rules:
 
 ### 2. Primary adapter: DuckDB / Quack journaled executor
 
-**Correction 2026-08-16:** the primary DurableExecutor journal is **DuckDB**
-(with best-effort Quack/DuckLake `LOAD`). SQLite is an explicit fallback, not
-the default.
+**Corrections 2026-08-16 and 2026-08-18:** the primary DurableExecutor journal
+is **DuckDB**. For each configured shard, one admitted, fenced Quack
+owner/service is the only process permitted to open the authoritative DuckDB
+file. SQLite is an explicit fallback, not the default.
 
 | Rule | Normative statement |
 | --- | --- |
-| Primary adapter | The **primary** production-capable DurableExecutor adapter for MCP++ 1.0 is a **DuckDB/Quack journaled executor**. |
+| Primary adapter | The **primary** production-capable DurableExecutor adapter for MCP++ 1.0 is a **DuckDB journal with one fenced, authenticated Quack owner/service**. |
+| Multi-client access | Supervisors, workers, and remote clients MUST use authenticated, bounded, typed Quack methods for journal reads and mutations. They MUST NOT open the DuckDB file directly, submit arbitrary SQL, or bypass owner epoch, lease, fencing, idempotency, deadline, and CAS checks. |
 | Local testability | Crash recovery MUST be demonstrable **locally** (process kill → restart → resume) without unpaid cloud services or non-repeatable remote clusters. |
 | Durability features | The journal MUST use transactional commit of journal records (DuckDB checkpoint on close; SQLite WAL when falling back). |
 | Idempotency | Externally visible steps carry **idempotency keys**; retries and recover MUST NOT re-commit the same side effect after a successful journal commit. |
 | Cancellation and obligations | Cancel state, timers, and deontic obligations that the executor accepted MUST survive restart when journaled. |
 | Fencing | Recovery and exclusive resume MUST reject **stale fencing tokens** / leases (same fail-closed spirit as single-authority CAS; not the same store as `StateRef` unless explicitly bound). |
+| DuckLake role | DuckLake MAY receive immutable, versioned post-commit journal epochs, snapshots, audit history, lineage, and analytical projections. It MUST NOT determine current journal ownership, claims, leases, fences, resume rights, or merge/finalize authority; lag or outage cannot change those decisions. |
 | Placement | Implementation package target: `ipfs_accelerate_py/mcp_server/mcplusplus/durable/` (e.g. `sqlite_executor.py`, `journal.py`) per MCPP-051. |
 | Conformance claims | Gate 17 and REQ-DUR-01 close only when this adapter (or a later Accepted supersession) passes crash recovery without duplicate effects. |
 
 DuckDB as a **durable execution journal** is related to but distinct from DuckDB
 as the primary **single-authority state** backend (ADR-0004 / KD-9 correction).
-A runtime MAY use one DuckDB file or separate files; the journal’s authority is
-step commit and recovery, not CRDT merge or multi-mode `StateRef` semantics.
-SQLite remains an explicit fallback for both stores.
+A runtime MAY use one DuckDB file or separate files, but each configured shard
+still has exactly one admitted file-opening Quack owner/service. The journal's
+authority is step commit and recovery, not CRDT merge, multi-mode `StateRef`
+semantics, or a DuckLake projection. SQLite remains an explicit fallback for
+both stores.
 
 ### 3. Restate evaluation (optional second adapter only)
 
@@ -188,7 +193,7 @@ SQLite remains an explicit fallback for both stores.
 A reader may treat the following as the interface label **`DurableExecutorDecision@1`**:
 
 1. DurableExecutor is defined in the spec/mcplusplus tree (`DurableExecutor@1`).
-2. Primary production-capable adapter is the **DuckDB/Quack journaled executor**, locally crash-recovery testable; SQLite is an explicit fallback.
+2. Primary production-capable adapter is the **DuckDB journal with one fenced, authenticated Quack owner/service**, locally crash-recovery testable; DuckLake is non-authoritative immutable history/analytics, and SQLite is an explicit fallback.
 3. Restate evaluated: capable product, **not mandatory**; optional only with repeatable local compose.
 4. Dapr evaluated: capable product, **not mandatory**; optional only with repeatable local compose.
 5. Second adapter admission is fail-closed without unpaid cloud and without displacing DuckDB/Quack as primary.
@@ -334,6 +339,7 @@ Decision §7.
 
 This ADR records plan KD-12’s DurableExecutor contract and Restate/Dapr
 evaluation without reopening those product choices. The 2026-08-16 correction
-makes DuckDB/Quack the primary journal engine and SQLite the explicit fallback.
-Second adapters are still admitted only under the local-compose / no-unpaid-cloud
-rule.
+makes DuckDB with one fenced, authenticated Quack owner/service the primary
+journal path, restricts DuckLake to non-authoritative immutable
+history/analytics, and keeps SQLite as the explicit fallback. Second adapters
+are still admitted only under the local-compose / no-unpaid-cloud rule.

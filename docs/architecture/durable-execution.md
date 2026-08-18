@@ -561,13 +561,23 @@ terminal work products.
 
 ### 10.1 Primary: DuckDB / Quack journaled executor
 
-Per ADR-0005 (2026-08-16 correction):
+Per ADR-0005 (2026-08-16 correction, role split clarified 2026-08-18):
 
 - Package target: `ipfs_accelerate_py/mcp_server/mcplusplus/durable/`
   (`sqlite_executor.py`, `journal.py`) plus
   `ipfs_accelerate_py/mcp_server/mcplusplus/storage/engine.py`.
-- Engine default is DuckDB. Quack and DuckLake are loaded with local `LOAD`
-  only (never network `INSTALL`). SQLite is an explicit fallback.
+- Engine default is DuckDB. For each configured shard, one admitted, fenced,
+  authenticated Quack owner/service is the only process permitted to open the
+  authoritative DuckDB file. SQLite is an explicit fallback.
+- Supervisors, workers, and remote clients use bounded, typed Quack methods for
+  reads and mutations; they do not open the DuckDB file directly or submit
+  arbitrary SQL. Every mutation remains subject to the current owner epoch,
+  lease, fencing token, idempotency key, deadline, and CAS/version predicate.
+- DuckLake may receive immutable, versioned post-commit journal epochs,
+  snapshots, audit history, lineage, and analytical projections. It is never
+  the authority for current ownership, claims, leases, fences, resume rights,
+  or merge/finalize decisions; publication lag or outage cannot change those
+  decisions.
 - Crash recovery demonstrable locally (process kill → restart → resume).
 - Transactional journal append (DuckDB checkpoint on close; SQLite WAL fallback).
 - Idempotency keys, cancel/obligation persistence, stale fence rejection.
