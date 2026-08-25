@@ -1,67 +1,44 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mcpp"
-version = "1.0.0"
-description = "MCP++ 1.0 installable CLI (McppCli@1) for inspect, validate, envelope, receipt, conformance, and doctor."
+name = "mcp-plus-plus-contracts"
+version = "0.1.0"
+description = "Immutable, data-only MCP++ proof-context v0.1 contracts"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "AGPL-3.0-or-later" }
+license = "AGPL-3.0-or-later"
 authors = [
-  { name = "MCP++ 1.0 gap-closure", email = "starworks5@gmail.com" },
+  { name = "MCP++ maintainers", email = "starworks5@gmail.com" },
 ]
 keywords = [
   "mcp",
   "mcp++",
-  "mcpp",
-  "ipfs",
-  "conformance",
-  "cli",
+  "contracts",
+  "proof-context",
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
-  "Environment :: Console",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Topic :: Software Development :: Quality Assurance",
-  "Topic :: System :: Distributed Computing",
+  "Topic :: Software Development :: Libraries",
 ]
 dependencies = []
 
-[project.optional-dependencies]
-crypto = ["cryptography>=38.0.0"]
-schema = ["jsonschema>=4.0.0"]
-dev = [
-  "pytest>=8.0.0",
-  "cryptography>=38.0.0",
-  "jsonschema>=4.0.0",
-]
-
 [project.urls]
 Homepage = "https://github.com/endomorphosis/Mcp-Plus-Plus"
-Documentation = "https://github.com/endomorphosis/Mcp-Plus-Plus"
-
-[project.scripts]
-# Installable entry loads the declared implementation module.
-mcpp = "mcpp:main"
+Documentation = "https://github.com/endomorphosis/Mcp-Plus-Plus/tree/main/docs/interop"
 
 [tool.setuptools]
-# Map the installable top-level module ``mcpp`` onto declared ``cli/mcpp.py``.
-# Repository-root ``mcpp.py`` remains a hermetic bootstrap for
-# ``python -m mcpp`` when the package root is on ``sys.path`` without install.
-py-modules = ["mcpp"]
+include-package-data = false
 
-[tool.setuptools.package-dir]
-"" = "cli"
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mcp_plus_plus_contracts", "mcp_plus_plus_contracts.*"]
 
-[tool.pytest.ini_options]
-testpaths = ["cli"]
-python_files = ["mcpp.py"]
-python_functions = ["test_*"]
-addopts = "-q"
+[tool.setuptools.package-data]
+mcp_plus_plus_contracts = ["resources/*.json"]
