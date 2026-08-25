@@ -106,14 +106,23 @@ exactly `immutable`, `single_authority`, `causal`, `crdt`, `consensus`.
 | Mode | Mandatory backend / substrate (MCP++ 1.0) |
 | --- | --- |
 | `immutable` | Content-addressed block / artifact store (CID-native) |
-| `single_authority` | **DuckDB / Quack / DuckLake** (SQLite fallback) |
+| `single_authority` | **DuckDB through one fenced, authenticated Quack owner/service** (SQLite fallback; DuckLake is non-authoritative history/analytics only) |
 | `causal` | Event DAG parents / clocks as the ordering substrate |
 | `crdt` | **Automerge** (real CRDT; not informal LWW) |
 | `consensus` | Declared consensus plugin with one of four guarantee labels |
 
 SQLite remains an explicit fallback (`MCPPLUSPLUS_SQL_ENGINE=sqlite`). It MUST
-NOT replace DuckDB/Quack/DuckLake as the default single-authority backend for
-MCP++ 1.0 conformance claims.
+NOT replace DuckDB through the fenced Quack owner/service as the default
+single-authority backend for MCP++ 1.0 conformance claims.
+
+For each configured shard, exactly one admitted, fenced, authenticated Quack
+owner/service may open the authoritative DuckDB file. Other supervisors,
+workers, and remote clients MUST use bounded, typed Quack methods and MUST NOT
+open that file directly or submit arbitrary SQL. DuckLake MAY contain
+immutable, versioned post-commit epochs, snapshots, audit history, lineage, and
+analytical projections. DuckLake MUST NOT grant, revoke, or recover a current
+claim, lease, fencing epoch, write ownership, or merge authority; its lag or
+unavailability cannot change authoritative state.
 
 ---
 

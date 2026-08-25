@@ -114,15 +114,19 @@ Wire shape and field rules: [../spec/state-ref.md](../spec/state-ref.md).
 | Mode | Mandatory backend / substrate | Notes |
 | --- | --- | --- |
 | `immutable` | CID-native block / artifact store | Append-only |
-| `single_authority` | **DuckDB / Quack / DuckLake** with transactional **CAS** | SQLite is an explicit fallback (`MCPPLUSPLUS_SQL_ENGINE=sqlite`) |
+| `single_authority` | **DuckDB through one fenced, authenticated Quack owner/service** with transactional **CAS** | DuckLake is immutable history/analytics only; SQLite is an explicit fallback (`MCPPLUSPLUS_SQL_ENGINE=sqlite`) |
 | `causal` | Event DAG parents / clocks | Partial order only |
 | `crdt` | **Automerge** | Real CRDT; informal LWW is forbidden |
 | `consensus` | Declared **consensus plugin** | One of four guarantee labels (§5) |
 
 DuckDB as **state** authority is related to but distinct from DuckDB as the
 **durable execution journal** (ADR-0005). A runtime MAY colocate files; table
-namespaces and authority must remain separate. SQLite remains an explicit
-fallback for both stores.
+namespaces and authority must remain separate. For each configured shard, one
+admitted, fenced Quack owner/service is the only process that opens the
+authoritative DuckDB file; all other readers and writers use authenticated,
+bounded, typed Quack methods. DuckLake contains only immutable, versioned
+post-commit history/analytics and cannot grant current claims, leases, fences,
+or merge authority. SQLite remains an explicit fallback for both stores.
 
 ---
 
@@ -235,7 +239,7 @@ matrix rows REQ-ST-01…04—not asserted complete by this document alone.
 ## 11. Checklist
 
 1. Five modes only: `immutable`, `single_authority`, `causal`, `crdt`, `consensus`.  
-2. DuckDB/Quack/DuckLake primary for single-authority (SQLite fallback); Automerge mandatory for CRDT.  
+2. DuckDB through one fenced, authenticated Quack owner/service is primary for single-authority; DuckLake is non-authoritative immutable history/analytics; SQLite is fallback; Automerge is mandatory for CRDT.
 3. Four consensus labels; Profile G not BFT.  
 4. Journal ≠ Event DAG ≠ StateRef authority.  
 5. Profile bundles referenced without over-claim.  

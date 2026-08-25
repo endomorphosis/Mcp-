@@ -117,7 +117,7 @@ Accepted ADRs under `ipfs_accelerate_py/mcplusplus/docs/architecture/decisions/`
 
 Additional sealed defaults still in force: KD-14 (transport identity ≠ authority; payment ≠ authorization), KD-15 (confidential artifact refs), KD-16 (`mcpp` CLI + three-peer compose + independent verifier), KD-17 (profile bundles: Evidence Core, Secure Delegation, Federated Mesh, Commerce, Verified Execution).
 
-**Runtime persistence correction (2026-08-16):** durable journals / single-authority state / Profile H stores **default to DuckDB** with best-effort local `LOAD` of Quack then DuckLake (never network `INSTALL`). SQLite remains explicit via `MCPPLUSPLUS_SQL_ENGINE=sqlite`. Recorded in ADR-0004 / ADR-0005.
+**Runtime persistence corrections (2026-08-16, clarified 2026-08-18):** durable journals / single-authority state / Profile H stores **default to DuckDB**. For each configured shard, one admitted, fenced, authenticated Quack owner/service is the only process that opens the authoritative DuckDB file; multi-client reads and writes use typed Quack methods. DuckLake is an immutable, versioned history/analytics projection and never current claim, lease, fence, write, or merge authority. SQLite remains explicit via `MCPPLUSPLUS_SQL_ENGINE=sqlite`. Recorded in ADR-0004 / ADR-0005.
 
 ---
 
